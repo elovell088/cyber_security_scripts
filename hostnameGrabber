@@ -1,0 +1,134 @@
+import socket
+import pyperclip
+import openpyxl
+from openpyxl.styles import Font
+from openpyxl.styles import Alignment
+from openpyxl.styles import PatternFill
+from datetime import date
+from datetime import datetime
+import subprocess
+
+####################################################
+#Grab the date and time - This is for the file name
+####################################################
+current_date = date.today()
+current_time = datetime.now().time()
+shorter_time = current_time.strftime("%H-%S")
+
+#######################################################################
+#Function that uses the socket library to grab host name by ip address
+#######################################################################
+def resolve_ip_to_hostname(ip_address):
+    try:
+        hostname, _, _ = socket.gethostbyaddr(ip_address)
+        return hostname
+    except (socket.gaierror, socket.herror):
+        return "Unable to resolve"
+
+####################################################
+#Function that strips .mcc.local from the hostname
+####################################################
+def strip_domain(hostname):
+    return hostname.split('.', 1)[0]
+
+
+
+##--MAIN--##
+def main():
+    
+    ####################################################
+    #PYPERCLIP LIBRARY USED TO PULL DATA FROM CLIPBOARD
+    ####################################################
+    clipboard_content = pyperclip.paste()
+    
+    ##########################################################
+    #SPLITS THE CLIPBOARD CONTENT INTO A LIST OF IP ADDRESSES
+    ##########################################################
+    raw_ip_addresses = clipboard_content.strip().split()
+
+    ##########################################################
+    #IF NO IP ADDRESSES ARE FOUND IN THE CLIPBOARD -- RETURNS 
+    ##########################################################
+    if not raw_ip_addresses:
+        print("No IP addresses found in the clipboard.")
+        return
+    
+    #############################################
+    #REMOVES THE PORT NUMBER FROM THE IP ADDRESS
+    #############################################
+    ip_addresses = [ip.split(':')[0] for ip in raw_ip_addresses]  
+
+    ###########################################
+    #CALLS THE RESOLVE_IP_TO_HOSTNAME FUNCTION
+    ###########################################
+    for ip_address in ip_addresses:
+        hostname = resolve_ip_to_hostname(ip_address)
+        print(f"{hostname}")
+
+    ##################################################
+    #OPENPYXL FOR EXCEL WORKBOOK CREATION STARTS HERE
+    ##################################################
+    excel = openpyxl.Workbook()
+    sheet = excel.active
+    
+    
+    #######################################################################
+    #STYLE THE TOP COLUMNS OF THE EXCEL WORKBOOK (IP AND HOSTNAME COLUMNS)
+    #######################################################################
+    sheet.cell(row=1, column=1, value="IP Address")
+    sheet.cell(row=1, column=2, value="Host Name")
+    sheet["A1"].font = Font(b=True, color="000080")
+    sheet["A1"].alignment = Alignment(horizontal="center")
+    sheet["B1"].font = Font(b=True, color="000080")
+    sheet["B1"].alignment = Alignment(horizontal="center")
+    
+    ########################################
+    #THIS FILLS THE CELLS WITH A FILL COLOR
+    ########################################
+    fill = PatternFill(start_color="D3D3D3", end_color="D3D3D3", fill_type="solid")
+    sheet["A1"].fill = fill
+    sheet["B1"].fill = fill
+    
+    
+    ##########################################
+    #BEGINS ITERATING THROUGH THE LIST OF IPS
+    ##########################################
+    for row, ip_address in enumerate(ip_addresses, start=2):
+        hostname = resolve_ip_to_hostname(ip_address)
+        stripped_hostname = strip_domain(hostname)
+        sheet.cell(row=row, column=1, value=ip_address).alignment = Alignment(horizontal="center")
+        sheet.cell(row=row, column=2, value=stripped_hostname).alignment = Alignment(horizontal="center")
+    
+    #############################################################################
+    #THIS DYNAMICALLY ADJUSTS THE SIZES OF THE COLUMNS BASED ON LENGTH OF STRING
+    #############################################################################
+    for column in sheet.columns:
+        max_length = 0
+        column_letter = openpyxl.utils.get_column_letter(column[0].column)
+        for cell in column:
+            try:
+                if len(str(cell.value)) > max_length:
+                    max_length = len(cell.value)
+            except:
+                pass
+        
+        adjusted_width = (max_length + 2)
+        sheet.column_dimensions[column_letter].width = adjusted_width
+
+    ######################################################
+    #FILE NAME AND FILE CREATION -- SAVES FILE TO C DRIVE
+    ######################################################
+    file_name = "c:/Hostnames-" + str(current_date) + "-" + str(shorter_time) + ".xlsx"
+    excel.save(file_name)
+
+    ############################################################################
+    #THIS USES THE SUBPROCESS LIBRARY TO AUTOMATICALLY OPEN THE EXCEL WORKSHEET
+    ############################################################################
+    subprocess.run(["start", "excel", file_name], shell=True)
+
+
+#######################################
+#THIS CALLS AND RUNS THE MAIN FUNCTION
+#######################################
+if __name__ == "__main__":
+    main()
