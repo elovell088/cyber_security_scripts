@@ -1,5 +1,9 @@
 #This contains Palo Alto API Functions -- Written by: Eric Lovell
 
+#Shows base functions for contructing and making Palo Alto API calls via Python
+
+#This will work for any model of Palo Alto Firewalls and Panorama. Variables within functions must be modified for your organizations specific data. 
+
 
 #Imports
 import sys
